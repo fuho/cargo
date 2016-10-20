@@ -1340,3 +1340,37 @@ this warning.
 [FINISHED] [..]
 "));
 }
+
+#[test]
+fn toml_lies_but_index_is_truth() {
+    Package::new("foo", "0.2.0").publish();
+    Package::new("bar", "0.3.0")
+            .dep("foo", "0.2.0")
+			.file("Cargo.toml", r#"
+				[project]
+                name = "bar"
+                version = "0.3.0"
+                authors = []
+
+                [dependencies]
+                foo = "0.1.0"
+			"#)
+            .file("src/lib.rs", "extern crate foo;")
+			.publish();
+
+    let p = project("foo")
+        .file("Cargo.toml", r#"
+            [project]
+            name = "bar"
+            version = "0.5.0"
+            authors = []
+
+            [dependencies]
+            bar = "0.3"
+        "#)
+        .file("src/main.rs", "fn main() {}");
+    p.build();
+
+    assert_that(p.cargo("build").arg("-v"),
+                execs().with_status(0));
+}
